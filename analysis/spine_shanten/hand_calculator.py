@@ -224,9 +224,8 @@ class HandCalculator(IHandCalculator):
                 newShanten = self.CalculateShanten(localArrangements)
                 a = currentShanten - newShanten
                 
-                # this evaluates to (remaining tiles of that type) or -1 if newShanten is not better than currentShanten
-                t = (5 - self.inHandByType[tileId]) * a - 1
-                ukeIre[27 + index] = t
+                if newShanten < currentShanten:
+                    ukeIre[tileId] = 4 - self.inHandByType[tileId]
 
                 self.chiitoi.Discard(previousTileCount)
                 self.kokushi.Discard(tileId, previousTileCount)

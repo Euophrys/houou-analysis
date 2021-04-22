@@ -9,8 +9,9 @@ from tqdm import tqdm
 import cProfile
 
 from shanten_test import ShantenTest
+from dama import Dama
 
-analyzers = [ShantenTest()]
+analyzers = [Dama()]
 allowed_types = ["169", "225", "185"]
 
 def RunAnalysis():
@@ -21,7 +22,7 @@ def RunAnalysis():
         cursor = conn.cursor()
         cursor.execute('SELECT COUNT(*) FROM logs')
         rowcount = cursor.fetchone()[0]
-        cursor.execute('SELECT * FROM logs LIMIT 10000')
+        cursor.execute('SELECT * FROM logs')
         last_print = 0
 
         for i in tqdm(range(rowcount), ncols=80, ascii=True):
