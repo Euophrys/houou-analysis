@@ -6,7 +6,7 @@ class ProgressiveHonorClassifier():
         self.current = current
 
     def Clone(self):
-        return ProgressiveHonorClassifier(self._current)
+        return ProgressiveHonorClassifier(self.current)
 
     def Draw(self, previousTiles, meldBit):
         action = previousTiles + (meldBit << 2) + 1

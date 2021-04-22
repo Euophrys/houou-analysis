@@ -4,6 +4,7 @@ from spine_shanten.chiitoi_classifier import ChiitoiClassifier
 from spine_shanten.kokushi_classifier import KokushiClassifier
 from spine_shanten.progressive_honor_classifier import ProgressiveHonorClassifier
 from spine_shanten.arrangement_classifier import Classify
+from collections import Counter
 
 Base5Table = (
     1,
@@ -81,8 +82,7 @@ class HandCalculator(IHandCalculator):
             self.arrangementValues[3] = self.honorClassifier.Draw(previousTileCount, self.jihaiMeldBit >> tileValue & 1)
         else:
             self.base5Hashes[tileSuit] += Base5Table[tileValue]
-        
-        self.UpdateValue(tileSuit)
+            self.UpdateValue(tileSuit)
 
     def UpdateValue(self, suit):
         self.arrangementValues[suit] = self.suitClassifiers[suit].GetValue(self.concealedTiles, suit, self.base5Hashes)
@@ -100,21 +100,21 @@ class HandCalculator(IHandCalculator):
             self.arrangementValues[3] = self.honorClassifier.Discard(tileCountAfterDiscard, self.jihaiMeldBit >> tileValue & 1)
         else:
             self.base5Hashes[tileSuit] -= Base5Table[tileValue]
-        UpdateValue(tileSuit)
+            self.UpdateValue(tileSuit)
       
     def Chii(self, lowestTileType, calledTileType):
-        suitId = lowestTileType.SuitId
-        lowestTileTypeIdInSuit = lowestTileType.Index
+        suitId = lowestTileType // 9
+        lowestTileTypeIdInSuit = lowestTileType % 9
 
-        self.concealedTiles[lowestTileType.TileTypeId] -= 1
-        self.concealedTiles[lowestTileType.TileTypeId + 1] -= 1
-        self.concealedTiles[lowestTileType.TileTypeId + 2] -= 1
-        self.concealedTiles[calledTileType.TileTypeId] += 1
+        self.concealedTiles[lowestTileType] -= 1
+        self.concealedTiles[lowestTileType + 1] -= 1
+        self.concealedTiles[lowestTileType + 2] -= 1
+        self.concealedTiles[calledTileType] += 1
 
         self.melds[suitId] <<= 6
         self.melds[suitId] += 1 + lowestTileTypeIdInSuit
         self.meldCount += 1
-        self.inHandByType[calledTileType.TileTypeId] += 1
+        self.inHandByType[calledTileType] += 1
         self.suitClassifiers[suitId].SetMelds(self.melds[suitId])
         
         self.UpdateValue(suitId)
@@ -184,9 +184,9 @@ class HandCalculator(IHandCalculator):
     def GetUkeIreFor13(self):
         currentShanten = self.CalculateShanten(self.arrangementValues)
 
-        ukeIre = [0] * 34
+        ukeIre = Counter()
         tileId = 0
-        localArrangements = (self.arrangementValues[0], self.arrangementValues[1], self.arrangementValues[2], self.arrangementValues[3])
+        localArrangements = [self.arrangementValues[0], self.arrangementValues[1], self.arrangementValues[2], self.arrangementValues[3]]
         
         for suit in range(3):
             for index in range(9):
@@ -201,9 +201,8 @@ class HandCalculator(IHandCalculator):
                     newShanten = self.CalculateShanten(localArrangements)
                     a = currentShanten - newShanten
                     
-                    # this evaluates to (remaining tiles of that type) or -1 if newShanten is not better than currentShanten
-                    t = (5 - self.inHandByType[tileId]) * a - 1
-                    ukeIre[tileId] = t
+                    if newShanten < currentShanten:
+                        ukeIre[tileId] = 4 - self.inHandByType[tileId]
 
                     self.concealedTiles[tileId] -= 1
                     self.base5Hashes[suit] -= Base5Table[index]
