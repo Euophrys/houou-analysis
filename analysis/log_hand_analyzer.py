@@ -5,9 +5,7 @@ from spine_shanten.hand_calculator import HandCalculator
 
 class LogHandAnalyzer(LogAnalyzer):
     def __init__(self):
-        self.hands = [[], [], [], []]
         self.calculators = [HandCalculator(), HandCalculator(), HandCalculator(), HandCalculator()]
-        self.calls = [[], [], [], []]
         self.discards = [[], [], [], []]
         self.last_draw = [50,50,50,50]
         self.end_round = False
@@ -68,17 +66,12 @@ class LogHandAnalyzer(LogAnalyzer):
         self.ReplayComplete()
     
     def RoundStarted(self, init):
-        self.hands = GetStartingHands(init)
         self.calculators = [HandCalculator(), HandCalculator(), HandCalculator(), HandCalculator()]
+        hands = GetStartingHands(init)
 
         for i in range(4):
-            tiles = []
-            for tile in self.hands[i]:
-                for j in range(self.hands[i][tile]):
-                    tiles.append(tile)
-            self.calculators[i].Init(tiles)
+            self.calculators[i].Init(hands[i])
 
-        self.calls = [[], [], [], []]
         self.discards = [[], [], [], []]
         self.end_round = False
     
@@ -86,33 +79,26 @@ class LogHandAnalyzer(LogAnalyzer):
         pass
 
     def TileDiscarded(self, who, tile, tsumogiri, element):
-        self.hands[who][tile] -= 1
         self.discards[who].append(tile)
         self.calculators[who].Discard(tile)
 
     def TileDrawn(self, who, tile, element):
-        self.hands[who][tile] += 1
         self.calculators[who].Draw(tile)
 
     def TileCalled(self, who, tiles, element):
         length = len(tiles)
         if length == 1:
-            self.hands[who][tiles[0]] -= 1
             self.calculators[who].Shouminkan(tiles[0])
         elif length == 4:
-            if self.hands[who][tiles[0]] == 4:
+            if self.calculators[who].inHandByType[tiles[0]] == 4:
                 self.calculators[who].Ankan(tiles[0])
             else:
                 self.calculators[who].Daiminkan(tiles[0])
-            self.hands[who][tiles[0]] = 0
         else:
             if tiles[1] == tiles[2]:
                 self.calculators[who].Pon(tiles[0])
             else:
                 self.calculators[who].Chii(min(tiles), tiles[0])
-            self.hands[who][tiles[1]] -= 1
-            self.hands[who][tiles[2]] -= 1
-        self.calls[who].append(tiles)
 
     def RiichiCalled(self, who, step, element):
         pass

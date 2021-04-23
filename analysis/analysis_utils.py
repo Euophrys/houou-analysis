@@ -41,7 +41,7 @@ def convertHandToTenhouString(hand):
 
 def convertHai(hai):
     converted = list(map(convertTile, hai.split(',')))
-    return convertHand(converted)
+    return converted
 
 def getTilesFromCall(call):
     meldInt = int(call)
@@ -217,10 +217,10 @@ def GetStartingHands(init, players = 4):
     return hands
 
 dora_indication = [
-    2, 3, 4, 5, 6, 7, 8, 9, 1,
-    12,13,14,15,16,17,18,19,11,
-    22,23,24,25,26,27,28,29,21,
-    32,33,34,31,36,37,35
+    1, 2, 3, 4, 5, 6, 7, 8, 0,
+    10,11,12,13,14,15,16,17,9,
+    19,20,21,22,23,24,25,26,18,
+    28,29,30,27,32,33,31
 ]
 
 def GetDora(indicator):

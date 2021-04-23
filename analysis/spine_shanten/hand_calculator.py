@@ -41,9 +41,18 @@ class HandCalculator(IHandCalculator):
     def Shanten(self):
         return self.CalculateShanten(self.arrangementValues) - 1
 
+    def NormalShanten(self):
+        return Classify(self.arrangementValues)
+
+    def ChiitoiShanten(self):
+        return self.chiitoi.shanten
+
+    def KokushiShanten(self):
+        return self.kokushi.shanten
+
     def CalculateShanten(self, arrangementValues):
         shanten = Classify(arrangementValues)
-        if (self.meldCount > 0):
+        if self.meldCount > 0:
             return shanten
         
         return min(shanten, self.kokushi.shanten, self.chiitoi.shanten)
@@ -78,7 +87,7 @@ class HandCalculator(IHandCalculator):
         self.kokushi.Draw(tile, previousTileCount)
         self.chiitoi.Draw(previousTileCount)
 
-        if (tileSuit == 3):
+        if tileSuit == 3:
             self.arrangementValues[3] = self.honorClassifier.Draw(previousTileCount, self.jihaiMeldBit >> tileValue & 1)
         else:
             self.base5Hashes[tileSuit] += Base5Table[tileValue]
@@ -96,7 +105,7 @@ class HandCalculator(IHandCalculator):
         self.kokushi.Discard(tile, tileCountAfterDiscard)
         self.chiitoi.Discard(tileCountAfterDiscard)
 
-        if (tileSuit == 3):
+        if tileSuit == 3:
             self.arrangementValues[3] = self.honorClassifier.Discard(tileCountAfterDiscard, self.jihaiMeldBit >> tileValue & 1)
         else:
             self.base5Hashes[tileSuit] -= Base5Table[tileValue]
@@ -173,7 +182,7 @@ class HandCalculator(IHandCalculator):
         self.concealedTiles[tile] -= 3
         self.meldCount += 1
 
-        if (suitId < 3):
+        if suitId < 3:
             self.melds[suitId] <<= 6
             self.melds[suitId] += 1 + 7 + 9 + index
             self.suitClassifiers[suitId].SetMelds(self.melds[suitId])
@@ -181,7 +190,7 @@ class HandCalculator(IHandCalculator):
         else:
             self.arrangementValues[3] = self.honorClassifier.Daiminkan()
       
-    def GetUkeIreFor13(self):
+    def GetUkeIreFor13(self, visible_tiles = Counter()):
         currentShanten = self.CalculateShanten(self.arrangementValues)
 
         ukeIre = Counter()
@@ -190,7 +199,7 @@ class HandCalculator(IHandCalculator):
         
         for suit in range(3):
             for index in range(9):
-                if (self.inHandByType[tileId] != 4):
+                if self.inHandByType[tileId] != 4:
                     self.kokushi.Draw(tileId, self.concealedTiles[tileId])
                     self.chiitoi.Draw(self.concealedTiles[tileId])
 
@@ -202,20 +211,18 @@ class HandCalculator(IHandCalculator):
                     a = currentShanten - newShanten
                     
                     if newShanten < currentShanten:
-                        ukeIre[tileId] = 4 - self.inHandByType[tileId]
+                        ukeIre[tileId] = 4 - self.inHandByType[tileId] - visible_tiles[tileId]
 
                     self.concealedTiles[tileId] -= 1
                     self.base5Hashes[suit] -= Base5Table[index]
                     self.kokushi.Discard(tileId, self.concealedTiles[tileId])
                     self.chiitoi.Discard(self.concealedTiles[tileId])
-                else:
-                    ukeIre[tileId] = -1
-                    
+
                 tileId += 1
             localArrangements[suit] = self.arrangementValues[suit]
         
         for index in range(7):
-            if (self.inHandByType[tileId] != 4):
+            if self.inHandByType[tileId] != 4:
                 previousTileCount = self.concealedTiles[tileId]
                 self.kokushi.Draw(tileId, previousTileCount)
                 self.chiitoi.Draw(previousTileCount)
@@ -225,15 +232,28 @@ class HandCalculator(IHandCalculator):
                 a = currentShanten - newShanten
                 
                 if newShanten < currentShanten:
-                    ukeIre[tileId] = 4 - self.inHandByType[tileId]
+                    ukeIre[tileId] = 4 - self.inHandByType[tileId] - visible_tiles[tileId]
 
                 self.chiitoi.Discard(previousTileCount)
                 self.kokushi.Discard(tileId, previousTileCount)
-            
-            else:
-                ukeIre[tileId] = -1
             tileId += 1
         return ukeIre
+
+    def GetUkeireFor14(self, visible_tiles = Counter()):
+        discard_ukeire = dict()
+        current_shanten = self.Shanten()
+
+        for tile in range(34):
+            if self.inHandByType[tile] == 0: continue
+
+            self.Discard(tile)
+            visible_tiles[tile] += 1
+            if self.Shanten() <= current_shanten:
+                discard_ukeire[tile] = self.GetUkeIreFor13(visible_tiles)
+            visible_tiles[tile] -= 1
+            self.Draw(tile)
+        
+        return discard_ukeire
     
     def ShantenAfterDiscard(self, tile):
         self.Discard(tile)
@@ -271,7 +291,7 @@ class HandCalculator(IHandCalculator):
         for meldId in meldIds:
             self.meldCount += 1
 
-            if (meldId < 7 + 9):
+            if meldId < 7 + 9:
                 index = meldId - 7
                 tile = index + 27
                 self.honorClassifier.Draw(0, 0)
@@ -295,12 +315,12 @@ class HandCalculator(IHandCalculator):
             self.melds[suitId] += 1 + meldId
             self.meldCount += 1
 
-            if (meldId < 7):
+            if meldId < 7:
                 start = 9 * suitId + meldId
                 self.inHandByType[start + 0] += 1
                 self.inHandByType[start + 1] += 1
                 self.inHandByType[start + 2] += 1
-            elif (meldId < 16):
+            elif meldId < 16:
                 self.inHandByType[9 * suitId + meldId - 7] += 3
             else:
                 self.inHandByType[9 * suitId + meldId - 16] += 4
