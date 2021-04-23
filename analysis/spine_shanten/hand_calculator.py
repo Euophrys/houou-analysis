@@ -210,7 +210,7 @@ class HandCalculator(IHandCalculator):
                     self.chiitoi.Discard(self.concealedTiles[tileId])
                 else:
                     ukeIre[tileId] = -1
-
+                    
                 tileId += 1
             localArrangements[suit] = self.arrangementValues[suit]
         
@@ -236,15 +236,15 @@ class HandCalculator(IHandCalculator):
         return ukeIre
     
     def ShantenAfterDiscard(self, tile):
-        Discard(tile)
+        self.Discard(tile)
         shantenAfterDiscard = self.CalculateShanten(self.arrangementValues) - 1
-        Draw(tile)
+        self.Draw(tile)
         return shantenAfterDiscard
     
     def ShantenWithTile(self, tile):
-        Draw(tile)
+        self.Draw(tile)
         shantenWithTile = self.CalculateShanten(self.arrangementValues) - 1
-        Discard(tile)
+        self.Discard(tile)
         return shantenWithTile
     
     def Clone(self):
