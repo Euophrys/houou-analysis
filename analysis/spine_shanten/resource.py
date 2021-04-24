@@ -9,5 +9,5 @@ def Transitions(resourceName):
 
 def Lookup(resourceName):
     fullResourceName = "./spine_shanten/data/%s" % resourceName
-    data = numpy.fromfile(fullResourceName, numpy.dtype('b'))
+    data = numpy.fromfile(fullResourceName, numpy.uint8)
     return data
