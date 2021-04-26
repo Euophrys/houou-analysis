@@ -19,14 +19,14 @@ class ShantenTest(LogHandAnalyzer):
         for i in range(4):
             hand = [0] * 38
 
-            for tile in self.hands[i]:
-                hand[lookup[tile]] = self.hands[i][tile]
+            for tile in range(34):
+                hand[lookup[tile]] = self.calculators[i].inHandByType[tile]
 
             old_shanten = calculateMinimumShanten(hand)
             spine_shanten = self.calculators[i].Shanten()
 
             if old_shanten != spine_shanten:
-                print("old: %d, spine: %d, %s" % (old_shanten, spine_shanten, convertHandToTenhouString(self.hands[i])))
+                print("old: %d, spine: %d, %s" % (old_shanten, spine_shanten, self.calculators[i]))
 
         self.end_round = True
 

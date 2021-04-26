@@ -86,6 +86,8 @@ class LogHandAnalyzer(LogAnalyzer):
         self.calculators[who].Draw(tile)
 
     def TileCalled(self, who, tiles, element):
+        self.last_draw[who] = 50
+        
         length = len(tiles)
         if length == 1:
             self.calculators[who].Shouminkan(tiles[0])

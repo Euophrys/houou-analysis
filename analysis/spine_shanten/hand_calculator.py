@@ -1,7 +1,5 @@
 from spine_shanten.ihand_calculator import IHandCalculator
 from spine_shanten.suits_classifier import SuitClassifier
-from spine_shanten.chiitoi_classifier import ChiitoiClassifier
-from spine_shanten.kokushi_classifier import KokushiClassifier
 from spine_shanten.progressive_honor_classifier import ProgressiveHonorClassifier
 from spine_shanten.arrangement_classifier import Classify
 from collections import Counter
@@ -18,6 +16,8 @@ Base5Table = (
     390625
 )
 
+KokushiTiles = (0,8,9,17,18,26,27,28,29,30,31,32,33)
+
 class HandCalculator(IHandCalculator):
     def __init__(self):
         self.arrangementValues = [0] * 4
@@ -27,13 +27,47 @@ class HandCalculator(IHandCalculator):
         self.melds = [0] * 3
         self.jihaiMeldBit = 0
         self.suitClassifiers = [SuitClassifier(), SuitClassifier(), SuitClassifier()]
-        self.chiitoi = ChiitoiClassifier()
-        self.kokushi = KokushiClassifier()
+        self.chiitoi_shanten = 7
+        self.kokushi_shanten = 14
+        self.kokushi_pairs = 0
         self.honorClassifier = ProgressiveHonorClassifier()
         self.meldCount = 0
 
     def __str__(self):
-        return "later"
+        output = ""
+        suit = []
+        for i in range(0, 9):
+            if self.inHandByType[i] > 0:
+                for j in range(self.inHandByType[i]):
+                    suit.append(str(i + 1))
+        if suit:
+            output += "%s%s" % ("".join(suit), "m")
+
+        suit = []
+        for i in range(9, 18):
+            if self.inHandByType[i] > 0:
+                for j in range(self.inHandByType[i]):
+                    suit.append(str(i % 9 + 1))
+        if suit:
+            output += "%s%s" % ("".join(suit), "p")
+
+        suit = []
+        for i in range(18, 27):
+            if self.inHandByType[i] > 0:
+                for j in range(self.inHandByType[i]):
+                    suit.append(str(i % 9 + 1))
+        if suit:
+            output += "%s%s" % ("".join(suit), "s")
+
+        suit = []
+        for i in range(27, 34):
+            if self.inHandByType[i] > 0:
+                for j in range(self.inHandByType[i]):
+                    suit.append(str(i % 9 + 1))
+        if suit:
+            output += "%s%s" % ("".join(suit), "z")
+        
+        return output
       #return Shanten + ": " + GetConcealedString(0, 'm') + GetConcealedString(1, 'p') + GetConcealedString(2, 's') +
        #      GetConcealedString(3, 'z') +
         #     GetMeldString(0, 'M') + GetMeldString(1, 'P') + GetMeldString(2, 'S') + GetHonorMeldString()
@@ -44,34 +78,39 @@ class HandCalculator(IHandCalculator):
     def NormalShanten(self):
         return Classify(self.arrangementValues)
 
-    def ChiitoiShanten(self):
-        return self.chiitoi.shanten
-
-    def KokushiShanten(self):
-        return self.kokushi.shanten
-
     def CalculateShanten(self, arrangementValues):
         shanten = Classify(arrangementValues)
         if self.meldCount > 0:
             return shanten
         
-        return min(shanten, self.kokushi.shanten, self.chiitoi.shanten)
+        return min(shanten, self.kokushi_shanten, self.chiitoi_shanten)
 
     def Init(self, tiles):
+        concealedTiles = self.concealedTiles
         for tile in tiles:
             tileValue = tile % 9
             tileSuit = tile // 9
             self.inHandByType[tile] += 1
 
             previousTileCount = self.concealedTiles[tile]
-            self.concealedTiles[tile] += 1
-            self.kokushi.Draw(tile, previousTileCount)
-            self.chiitoi.Draw(previousTileCount)
+            concealedTiles[tile] += 1
+
+            if previousTileCount == 1:
+                self.chiitoi_shanten -= 1
 
             if tileSuit == 3:
                 self.arrangementValues[3] = self.honorClassifier.Draw(previousTileCount, self.jihaiMeldBit >> tileValue & 1)
             else:
                 self.base5Hashes[tileSuit] += Base5Table[tileValue]
+        
+        counts = [0,0,0,0,0]
+        for i in KokushiTiles:
+            counts[concealedTiles[i]] += 1
+            
+        self.kokushi_pairs += counts[2] + counts[3] + counts[4]
+        self.kokushi_shanten = counts[0]
+        if self.kokushi_pairs == 0:
+            self.kokushi_shanten += 1
 
         self.UpdateValue(0)
         self.UpdateValue(1)
@@ -84,13 +123,28 @@ class HandCalculator(IHandCalculator):
 
         previousTileCount = self.concealedTiles[tile]
         self.concealedTiles[tile] += 1
-        self.kokushi.Draw(tile, previousTileCount)
-        self.chiitoi.Draw(previousTileCount)
+
+        if previousTileCount == 1:
+            self.chiitoi_shanten -= 1
 
         if tileSuit == 3:
             self.arrangementValues[3] = self.honorClassifier.Draw(previousTileCount, self.jihaiMeldBit >> tileValue & 1)
+            if previousTileCount == 0:
+                self.kokushi_shanten -= 1
+            elif previousTileCount == 1:
+                self.kokushi_pairs += 1
+                if self.kokushi_pairs == 1:
+                    self.kokushi_shanten -= 1
         else:
             self.base5Hashes[tileSuit] += Base5Table[tileValue]
+            if tileValue == 0 or tileValue == 8:
+                if previousTileCount == 0:
+                    self.kokushi_shanten -= 1
+                elif previousTileCount == 1:
+                    self.kokushi_pairs += 1
+                    if self.kokushi_pairs == 1:
+                        self.kokushi_shanten -= 1
+                        
             self.UpdateValue(tileSuit)
 
     def UpdateValue(self, suit):
@@ -102,13 +156,27 @@ class HandCalculator(IHandCalculator):
         self.inHandByType[tile] -= 1
         self.concealedTiles[tile] -= 1
         tileCountAfterDiscard = self.concealedTiles[tile]
-        self.kokushi.Discard(tile, tileCountAfterDiscard)
-        self.chiitoi.Discard(tileCountAfterDiscard)
+
+        if tileCountAfterDiscard == 1:
+            self.chiitoi_shanten -= 1
 
         if tileSuit == 3:
             self.arrangementValues[3] = self.honorClassifier.Discard(tileCountAfterDiscard, self.jihaiMeldBit >> tileValue & 1)
+            if tileCountAfterDiscard == 0:
+                self.kokushi_shanten += 1
+            elif tileCountAfterDiscard == 1:
+                self.kokushi_pairs -= 1
+                if self.kokushi_pairs == 0:
+                    self.kokushi_shanten += 1
         else:
             self.base5Hashes[tileSuit] -= Base5Table[tileValue]
+            if tileValue == 0 or tileValue == 9:
+                if tileCountAfterDiscard == 0:
+                    self.kokushi_shanten += 1
+            elif tileCountAfterDiscard == 1:
+                self.kokushi_pairs -= 1
+                if self.kokushi_pairs == 0:
+                    self.kokushi_shanten += 1
             self.UpdateValue(tileSuit)
       
     def Chii(self, lowestTileType, calledTileType):
@@ -326,5 +394,3 @@ class HandCalculator(IHandCalculator):
                 self.inHandByType[9 * suitId + meldId - 16] += 4
             
             self.suitClassifiers[suitId].SetMelds(self.melds[suitId])
-    
-    

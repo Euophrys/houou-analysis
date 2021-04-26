@@ -6,11 +6,9 @@ class ChiitoiClassifier():
         return ChiitoiClassifier(self.shanten)
 
     def Draw(self, previousTileCount):
-        # ((x >> 1) ^ 001) & x
-        # 1 if x == 1 else 0
-        self.shanten -= ((previousTileCount >> 1) ^ 1) & previousTileCount
+        if previousTileCount == 1:
+            self.shanten -= 1
 
     def Discard(self, tileCountAfterDiscard):
-        # ((x >> 1) ^ 001) & x
-        # 1 if x == 1 else 0
-        self.shanten += ((tileCountAfterDiscard >> 1) ^ 1) & tileCountAfterDiscard
+        if tileCountAfterDiscard == 1:
+            self.shanten += 1
