@@ -90,7 +90,7 @@ class ShantenByTedashi(LogHandAnalyzer):
                         c.write("%d," % turn)
                         s.write("%d," % turn)
                         t.write("%d," % turn)
-                        for tedashi in range(18):
+                        for tedashi in range(1,19):
                             c.write("%d," % self.counts_tedashi[turn][tedashi])
                             s.write("%d," % self.tedashi[turn][tedashi])
                             t.write("%d," % self.tenpais_tedashi[turn][tedashi])

@@ -107,7 +107,7 @@ class HandCalculator(IHandCalculator):
         for i in KokushiTiles:
             counts[concealedTiles[i]] += 1
             
-        self.kokushi_pairs += counts[2] + counts[3] + counts[4]
+        self.kokushi_pairs = counts[2] + counts[3] + counts[4]
         self.kokushi_shanten = counts[0]
         if self.kokushi_pairs == 0:
             self.kokushi_shanten += 1
@@ -158,7 +158,7 @@ class HandCalculator(IHandCalculator):
         tileCountAfterDiscard = self.concealedTiles[tile]
 
         if tileCountAfterDiscard == 1:
-            self.chiitoi_shanten -= 1
+            self.chiitoi_shanten += 1
 
         if tileSuit == 3:
             self.arrangementValues[3] = self.honorClassifier.Discard(tileCountAfterDiscard, self.jihaiMeldBit >> tileValue & 1)
