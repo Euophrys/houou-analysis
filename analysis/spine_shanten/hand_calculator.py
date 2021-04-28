@@ -129,21 +129,11 @@ class HandCalculator(IHandCalculator):
 
         if tileSuit == 3:
             self.arrangementValues[3] = self.honorClassifier.Draw(previousTileCount, self.jihaiMeldBit >> tileValue & 1)
-            if previousTileCount == 0:
-                self.kokushi_shanten -= 1
-            elif previousTileCount == 1:
-                self.kokushi_pairs += 1
-                if self.kokushi_pairs == 1:
-                    self.kokushi_shanten -= 1
+            self.AddKokushiTile(previousTileCount)
         else:
             self.base5Hashes[tileSuit] += Base5Table[tileValue]
             if tileValue == 0 or tileValue == 8:
-                if previousTileCount == 0:
-                    self.kokushi_shanten -= 1
-                elif previousTileCount == 1:
-                    self.kokushi_pairs += 1
-                    if self.kokushi_pairs == 1:
-                        self.kokushi_shanten -= 1
+                self.AddKokushiTile(previousTileCount)
                         
             self.UpdateValue(tileSuit)
 
@@ -162,22 +152,28 @@ class HandCalculator(IHandCalculator):
 
         if tileSuit == 3:
             self.arrangementValues[3] = self.honorClassifier.Discard(tileCountAfterDiscard, self.jihaiMeldBit >> tileValue & 1)
-            if tileCountAfterDiscard == 0:
-                self.kokushi_shanten += 1
-            elif tileCountAfterDiscard == 1:
-                self.kokushi_pairs -= 1
-                if self.kokushi_pairs == 0:
-                    self.kokushi_shanten += 1
+            self.RemoveKokushiTile(tileCountAfterDiscard)
         else:
             self.base5Hashes[tileSuit] -= Base5Table[tileValue]
-            if tileValue == 0 or tileValue == 9:
-                if tileCountAfterDiscard == 0:
-                    self.kokushi_shanten += 1
-            elif tileCountAfterDiscard == 1:
-                self.kokushi_pairs -= 1
-                if self.kokushi_pairs == 0:
-                    self.kokushi_shanten += 1
+            if tileValue == 0 or tileValue == 8:
+                self.RemoveKokushiTile(tileCountAfterDiscard)
             self.UpdateValue(tileSuit)
+
+    def AddKokushiTile(self, previousTileCount):
+        if previousTileCount == 0:
+            self.kokushi_shanten -= 1
+        elif previousTileCount == 1:
+            self.kokushi_pairs += 1
+            if self.kokushi_pairs == 1:
+                self.kokushi_shanten -= 1
+
+    def RemoveKokushiTile(self, tileCountAfterDiscard):
+        if tileCountAfterDiscard == 0:
+            self.kokushi_shanten += 1
+        elif tileCountAfterDiscard == 1:
+            self.kokushi_pairs -= 1
+            if self.kokushi_pairs == 0:
+                self.kokushi_shanten += 1
       
     def Chii(self, lowestTileType, calledTileType):
         suitId = lowestTileType // 9
@@ -268,42 +264,46 @@ class HandCalculator(IHandCalculator):
         for suit in range(3):
             for index in range(9):
                 if self.inHandByType[tileId] != 4:
-                    self.kokushi.Draw(tileId, self.concealedTiles[tileId])
-                    self.chiitoi.Draw(self.concealedTiles[tileId])
+                    is_kokushi_tile = index == 0 or index == 8
+                    if is_kokushi_tile:
+                        self.AddKokushiTile(self.concealedTiles[tileId])
+                    if self.concealedTiles[tileId] == 1:
+                        self.chiitoi_shanten -= 1
 
                     self.concealedTiles[tileId] += 1
                     self.base5Hashes[suit] += Base5Table[index]
                     localArrangements[suit] = self.suitClassifiers[suit].GetValue(self.concealedTiles, suit, self.base5Hashes)
 
                     newShanten = self.CalculateShanten(localArrangements)
-                    a = currentShanten - newShanten
                     
                     if newShanten < currentShanten:
                         ukeIre[tileId] = 4 - self.inHandByType[tileId] - visible_tiles[tileId]
 
                     self.concealedTiles[tileId] -= 1
                     self.base5Hashes[suit] -= Base5Table[index]
-                    self.kokushi.Discard(tileId, self.concealedTiles[tileId])
-                    self.chiitoi.Discard(self.concealedTiles[tileId])
-
+                    if is_kokushi_tile:
+                        self.RemoveKokushiTile(self.concealedTiles[tileId])
+                    if self.concealedTiles[tileId] == 1:
+                        self.chiitoi_shanten += 1
                 tileId += 1
             localArrangements[suit] = self.arrangementValues[suit]
         
         for index in range(7):
             if self.inHandByType[tileId] != 4:
                 previousTileCount = self.concealedTiles[tileId]
-                self.kokushi.Draw(tileId, previousTileCount)
-                self.chiitoi.Draw(previousTileCount)
+                self.AddKokushiTile(previousTileCount)
+                if previousTileCount == 1:
+                    self.chiitoi_shanten -= 1
                 localArrangements[3] = self.honorClassifier.Clone().Draw(self.concealedTiles[tileId], self.jihaiMeldBit >> index & 1)
 
                 newShanten = self.CalculateShanten(localArrangements)
-                a = currentShanten - newShanten
                 
                 if newShanten < currentShanten:
                     ukeIre[tileId] = 4 - self.inHandByType[tileId] - visible_tiles[tileId]
 
-                self.chiitoi.Discard(previousTileCount)
-                self.kokushi.Discard(tileId, previousTileCount)
+                self.RemoveKokushiTile(previousTileCount)
+                if previousTileCount == 1:
+                    self.chiitoi_shanten += 1
             tileId += 1
         return ukeIre
 
